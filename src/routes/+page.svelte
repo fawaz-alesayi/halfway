@@ -3,7 +3,6 @@
 	import Radio from '$lib/Radio.svelte';
 </script>
 
-<!-- A -->
 <section class="p-4 flex flex-col sm:items-center">
 	<h1 class="text-center text-3xl">Halfway</h1>
 	<h2 class="text-center text-xl">Find places to meet someone halfway</h2>
