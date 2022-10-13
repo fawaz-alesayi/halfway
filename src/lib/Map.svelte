@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Loader } from '@googlemaps/js-api-loader';
-	import { PUBLIC_GMAPS_KEY } from '$env/static/public';
+	import { PUBLIC_GMAPS_KEY, PUBLIC_MAP_ID } from '$env/static/public';
 	import { doubleClickZooming } from './zoomMachine';
 	import { useMachine } from '@xstate/svelte';
 	import { onMount } from 'svelte';
@@ -19,10 +19,10 @@
 
 	let bounds: google.maps.LatLngBounds | undefined;
 
-	let anchor: google.maps.LatLngBounds | undefined;
+	let anchor;
 
 	let container: HTMLElement;
-	let zoom = 8;
+	let zoom = 11;
 	let center = { lat: -34.397, lng: 150.644 };
 
 	const placeMarker = (marker: google.maps.Marker, position: google.maps.LatLng) => {
@@ -47,8 +47,13 @@
 				center,
 				zoom,
 				gestureHandling: 'greedy',
-				zoomControl:false,
-				streetViewControl:false,
+				zoomControl: false,
+				streetViewControl: false,
+				mapId: PUBLIC_MAP_ID
+			});
+
+			map.setOptions({
+				isFractionalZoomEnabled: true
 			});
 
 			send({
@@ -57,12 +62,12 @@
 			});
 
 			// add an OnClick event to the map that adds a marker on the clicked location
-			map.addListener('dblclick', (event: any) => {
-				console.log(event);
-				console.log('clicked on map');
-				placeMarker(marker1, event.latLng);
-				// map.setCenter(event.latLng);
-			});
+			// map.addListener('dblclick', (event: any) => {
+			// 	console.log(event);
+			// 	console.log('clicked on map');
+			// 	placeMarker(marker1, event.latLng);
+			// 	// map.setCenter(event.latLng);
+			// });
 
 			bounds = map.getBounds();
 		});
@@ -86,29 +91,41 @@
 </script>
 
 {#if map}
-	<div class="fixed z-10 top-16 text-4xl">
-		<button
+	<div class="fixed z-10 top-16 text-4xl left-4 rounded-md ">
+		<!-- <button
 			type="button"
 			class="mx-auto inline-flex items-center rounded-full border border-transparent bg-indigo-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
 			>Confirm First Location</button
-		>
-		<p class="bg-indigo-600 text-2xl text-white">
+		> -->
+		<p class="bg-indigo-600 text-2xl text-white mb-4 p-1">
 			{$state.value}
 		</p>
-		<p class="bg-indigo-600 text-2xl text-white">
-			{`bounds: ${bounds}`}
+		<p class="bg-indigo-600 text-2xl text-white mb-2 p-1">
+			{`y-anchor: ${$state.context['yAnchor']}`}
 		</p>
+		<p class="bg-indigo-600 text-2xl text-white p-1">
+			{`displacement: ${$state.context['yAnchor'] - $state.context['y']}`}
+		</p>
+		<p class="bg-indigo-600 text-2xl text-white p-1">
+			{`zoom: ${$state.context['map']?.getZoom()}`}
+		</p>
+		<!-- <p class="bg-indigo-600 text-2xl text-white">
+			{`bounds: ${bounds}`}
+		</p> -->
 	</div>
 {/if}
 <div
 	class="full-screen"
-	on:touchstart={() => {
-		send('touchstart');
+	on:touchstart={(e) => {
+		send({
+			type: 'touchstart',
+			y: e.touches[0].clientY
+		});
 	}}
 	on:touchend={() => {
 		send('touchend');
 	}}
-	use:pan
+	use:pan={{ delay: 300 }}
 	on:pan={(e) => {
 		console.log(e.detail);
 		send({

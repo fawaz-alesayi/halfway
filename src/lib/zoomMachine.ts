@@ -1,4 +1,4 @@
-import { createMachine } from 'xstate';
+import { assign, createMachine } from 'xstate';
 
 // State Machine that describes the "double click then pan to zoom behavior"
 export const doubleClickZooming =
@@ -7,23 +7,26 @@ export const doubleClickZooming =
 		{
 			tsTypes: {} as import('./zoomMachine.typegen').Typegen0,
 			schema: {
-				context: {} as { map?: google.maps.Map; zoomSpeed: number; x?: number; y?: number },
+				context: {} as { map?: google.maps.Map; zoomSpeed: number; x?: number; y?: number, yAnchor?: number },
 				events: {} as
-					| { type: 'touchstart' }
+					| { type: 'touchstart', y: number }
 					| { type: 'pan'; x: number; y: number }
 					| { type: 'touchend' }
 					| { type: 'mapLoaded'; map: google.maps.Map }
 					| { type: 'boundsChanged'; bounds: google.maps.LatLngBounds }
+					| { type: 'setAnchor'; anchor: number }
+					| { type: 'disablePan' }
+					| { type: 'enablePan' }
 			},
 			predictableActionArguments: true,
 			id: 'dbl_zoom',
 			initial: 'inactive',
 			context: {
-				bounds: undefined,
 				map: undefined,
-				zoomSpeed: 0.001,
+				zoomSpeed: 0.005,
 				x: undefined,
-				y: undefined
+				y: undefined,
+				yAnchor: undefined
 			},
 			states: {
 				inactive: {
@@ -54,8 +57,9 @@ export const doubleClickZooming =
 				dbl_touch_waiting: {
 					on: {
 						touchstart: {
-							target: 'dbl_touching'
-						}
+							target: 'dbl_touching',
+							actions: ['setAnchor'],
+						},
 					},
 					after: {
 						300: {
@@ -74,6 +78,8 @@ export const doubleClickZooming =
 					}
 				},
 				zooming: {
+					entry: ['disablePan'],
+					exit: ['enablePan'],
 					on: {
 						touchend: {
 							target: 'active'
@@ -97,11 +103,28 @@ export const doubleClickZooming =
 						ctx.y = e.y;
 						return;
 					}
-                    google.maps.event.trigger(ctx.map, 'bounds_changed', {
-                        bounds: ctx.map.getBounds()
-                    });
+					// increase zoom level
+					const zoom = ctx.map.getZoom();
+					const newZoom = zoom + (e.y - ctx.y) * ctx.zoomSpeed;
+					ctx.map?.moveCamera({
+						zoom: newZoom,
+					});
+
 					ctx.x = e.x;
 					ctx.y = e.y;
+				},
+				setAnchor: (ctx, e) => {
+					ctx.yAnchor = e.y;
+				},
+				disablePan: (ctx, e) => {
+					ctx.map?.setOptions({
+						gestureHandling: 'none'
+					});
+				},
+				enablePan: (ctx, e) => {
+					ctx.map?.setOptions({
+						gestureHandling: 'greedy'
+					});
 				}
 			}
 		}
