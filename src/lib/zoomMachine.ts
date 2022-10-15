@@ -8,12 +8,16 @@ export const doubleClickZooming =
 			tsTypes: {} as import('./zoomMachine.typegen').Typegen0,
 			schema: {
 				context: {} as {
-					map?: google.maps.Map; zoomSpeed: number; x?: number; y?: number, secondTouch?: {
+					map?: google.maps.Map; zoomSpeed: number; zoom?: number; x?: number; y?: number, secondTouch: {
 						x: number;
 						y: number;
-					}, firstTouch?: {
+					}, firstTouch: {
 						x: number;
 						y: number;
+					},
+					anchor: {
+						x?: number;
+						y?: number;
 					}
 				},
 				events: {} as
@@ -22,9 +26,12 @@ export const doubleClickZooming =
 					| { type: 'touchend' }
 					| { type: 'mapLoaded'; map: google.maps.Map }
 					| { type: 'boundsChanged'; bounds: google.maps.LatLngBounds }
-					| { type: 'setAnchor'; anchor: number }
+					| { type: 'setSecondTouch'; x: number, y: number }
 					| { type: 'disablePan' }
 					| { type: 'enablePan' }
+					| { type: 'setAnchor'; x: number, y: number }
+					| { type: 'clearAnchor'; }
+					| { type: 'clearXY'; }
 			},
 			predictableActionArguments: true,
 			id: 'dbl_zoom',
@@ -32,13 +39,21 @@ export const doubleClickZooming =
 			context: {
 				map: undefined,
 				zoomSpeed: 0.005,
+				zoom: undefined,
 				x: undefined,
 				y: undefined,
 				firstTouch: {
 					x: 0,
 					y: 0,
 				},
-				
+				secondTouch: {
+					x: 0,
+					y: 0,
+				},
+				anchor: {
+					x: undefined,
+					y: undefined,
+				},
 			},
 			states: {
 				inactive: {
@@ -71,8 +86,9 @@ export const doubleClickZooming =
 					on: {
 						touchstart: {
 							target: 'dbl_touching',
-							actions: ['setAnchor'],
-							cond: (context, event) => Math.abs(context.firstTouch.y - event.y) < 10
+							actions: ['setSecondTouch'],
+							// touch target area is a 10 unit square
+							cond: (context, event) => Math.abs(context.firstTouch.y - event.y) <= 20 && Math.abs(context.firstTouch.x - event.x) <= 20
 						},
 					},
 					after: {
@@ -82,21 +98,31 @@ export const doubleClickZooming =
 					}
 				},
 				dbl_touching: {
-					entry: ['disablePan'],
-					exit: ['enablePan'],
 					on: {
-						touchstart: {
-							target: 'dbl_touching',
+						pan: {
+							target: 'zooming',
+							cond: (context, event) => (Math.abs(event.y - context.secondTouch.y) > 20)
 						},
 						touchend: {
 							target: 'active'
 						},
+					},
+					exit: ['setAnchor'],
+				},
+				zooming: {
+					entry: ['disablePan'],
+					exit: ['enablePan'],
+					on: {
 						pan: {
-							target: 'dbl_touching',
+							target: 'zooming',
 							actions: ['changeBounds']
 						},
+						touchend: {
+							target: 'active',
+							actions: ['clearAnchor', 'clearXY']
+						},
 					}
-				},
+				}
 			}
 		},
 		{
@@ -114,24 +140,48 @@ export const doubleClickZooming =
 						ctx.y = e.y;
 						return;
 					}
-					if (Math.abs(e.y - ctx.secondTouch.y) > 20) {
-						const zoom = ctx.map.getZoom();
-						const newZoom = zoom + (e.y - ctx.y) * ctx.zoomSpeed;
-						ctx.map?.moveCamera({
-							zoom: newZoom,
-						});
-					}
+
+					const newZoom = ctx.map?.getZoom() + ((e.y - ctx.y)) * ctx.zoomSpeed;
+					ctx.map?.moveCamera({
+						zoom: newZoom,
+					});
+
 
 					ctx.x = e.x;
 					ctx.y = e.y;
+
 				},
-				setAnchor: (ctx, e) => {
+				setSecondTouch: (ctx, e) => {
 					ctx.secondTouch.x = e.x;
 					ctx.secondTouch.y = e.y;
 				},
+				setAnchor: assign({
+					anchor: (ctx, e) => {
+						return {
+							x: e.x,
+							y: e.y,
+						};
+					}
+				}),
+				clearAnchor: assign({
+					anchor: (ctx, e) => {
+						return {
+							x: undefined,
+							y: undefined,
+						};
+					}
+				}),
+				clearXY: assign({
+					x: (ctx, e) => {
+						return undefined;
+					},
+					y: (ctx, e) => {
+						return undefined;
+					}
+				}),
 				disablePan: (ctx, e) => {
 					ctx.map?.setOptions({
-						gestureHandling: 'greedy'
+						gestureHandling: 'none',
 					});
 				},
 				enablePan: (ctx, e) => {

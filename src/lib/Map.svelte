@@ -7,19 +7,13 @@
 	import { pan } from 'svelte-gestures';
 	let map: google.maps.Map;
 
-	let holdingMap = false;
-
-	const { send, state, service } = useMachine(doubleClickZooming);
+	const { send, state } = useMachine(doubleClickZooming);
 
 	// User location
 	let marker1: google.maps.Marker;
 
 	// Other user location
 	let marker2: google.maps.Marker;
-
-	let bounds: google.maps.LatLngBounds | undefined;
-
-	let anchor;
 
 	let container: HTMLElement;
 	let zoom = 11;
@@ -68,8 +62,6 @@
 			// 	placeMarker(marker1, event.latLng);
 			// 	// map.setCenter(event.latLng);
 			// });
-
-			bounds = map.getBounds();
 		});
 
 		// ask for current user location
@@ -101,17 +93,14 @@
 			{$state.value}
 		</p>
 		<p class="bg-indigo-600 text-2xl text-white mb-2 p-1">
-			{`y-anchor: ${$state.context['yAnchor']}`}
+			{`y-anchor: ${$state.context['anchor'].y}`}
 		</p>
 		<p class="bg-indigo-600 text-2xl text-white p-1">
-			{`displacement: ${$state.context['yAnchor'] - $state.context['y']}`}
+			{`displacement: ${$state.context['anchor'].y - $state.context['y']}`}
 		</p>
 		<p class="bg-indigo-600 text-2xl text-white p-1">
 			{`zoom: ${$state.context['map']?.getZoom()}`}
 		</p>
-		<!-- <p class="bg-indigo-600 text-2xl text-white">
-			{`bounds: ${bounds}`}
-		</p> -->
 	</div>
 {/if}
 <div
@@ -119,16 +108,15 @@
 	on:touchstart={(e) => {
 		send({
 			type: 'touchstart',
-			y: e.touches[0].clientY
+			y: e.touches[0].clientY,
 			x: e.touches[0].clientX
 		});
 	}}
 	on:touchend={() => {
 		send('touchend');
 	}}
-	use:pan={{ delay: 200 }}
+	use:pan={{ delay: 0 }}
 	on:pan={(e) => {
-		console.log(e.detail);
 		send({
 			type: 'pan',
 			x: e.detail.x,

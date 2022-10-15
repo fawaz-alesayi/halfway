@@ -9,3 +9,4 @@ node_modules
 .vercel
 .output
 *.typegen.ts
+vite.config.ts.timestamp*
