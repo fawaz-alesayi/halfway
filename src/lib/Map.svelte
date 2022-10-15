@@ -120,12 +120,13 @@
 		send({
 			type: 'touchstart',
 			y: e.touches[0].clientY
+			x: e.touches[0].clientX
 		});
 	}}
 	on:touchend={() => {
 		send('touchend');
 	}}
-	use:pan={{ delay: 300 }}
+	use:pan={{ delay: 200 }}
 	on:pan={(e) => {
 		console.log(e.detail);
 		send({

@@ -7,9 +7,17 @@ export const doubleClickZooming =
 		{
 			tsTypes: {} as import('./zoomMachine.typegen').Typegen0,
 			schema: {
-				context: {} as { map?: google.maps.Map; zoomSpeed: number; x?: number; y?: number, yAnchor?: number },
+				context: {} as {
+					map?: google.maps.Map; zoomSpeed: number; x?: number; y?: number, secondTouch?: {
+						x: number;
+						y: number;
+					}, firstTouch?: {
+						x: number;
+						y: number;
+					}
+				},
 				events: {} as
-					| { type: 'touchstart', y: number }
+					| { type: 'touchstart', x: number, y: number }
 					| { type: 'pan'; x: number; y: number }
 					| { type: 'touchend' }
 					| { type: 'mapLoaded'; map: google.maps.Map }
@@ -26,7 +34,11 @@ export const doubleClickZooming =
 				zoomSpeed: 0.005,
 				x: undefined,
 				y: undefined,
-				yAnchor: undefined
+				firstTouch: {
+					x: 0,
+					y: 0,
+				},
+				
 			},
 			states: {
 				inactive: {
@@ -40,7 +52,8 @@ export const doubleClickZooming =
 				active: {
 					on: {
 						touchstart: {
-							target: 'touching'
+							target: 'touching',
+							actions: ['setFirstTouch'],
 						}
 					}
 				},
@@ -59,6 +72,7 @@ export const doubleClickZooming =
 						touchstart: {
 							target: 'dbl_touching',
 							actions: ['setAnchor'],
+							cond: (context, event) => Math.abs(context.firstTouch.y - event.y) < 10
 						},
 					},
 					after: {
@@ -68,28 +82,21 @@ export const doubleClickZooming =
 					}
 				},
 				dbl_touching: {
-					on: {
-						pan: {
-							target: 'zooming'
-						},
-						touchend: {
-							target: 'active'
-						}
-					}
-				},
-				zooming: {
 					entry: ['disablePan'],
 					exit: ['enablePan'],
 					on: {
+						touchstart: {
+							target: 'dbl_touching',
+						},
 						touchend: {
 							target: 'active'
 						},
 						pan: {
-							target: 'zooming',
+							target: 'dbl_touching',
 							actions: ['changeBounds']
-						}
+						},
 					}
-				}
+				},
 			}
 		},
 		{
@@ -97,28 +104,34 @@ export const doubleClickZooming =
 				setMap: (ctx, e) => {
 					ctx.map = e.map;
 				},
+				setFirstTouch: (ctx, e) => {
+					ctx.firstTouch.y = e.y;
+					ctx.firstTouch.x = e.x;
+				},
 				changeBounds: (ctx, e) => {
 					if (ctx.x === undefined || ctx.y === undefined) {
 						ctx.x = e.x;
 						ctx.y = e.y;
 						return;
 					}
-					// increase zoom level
-					const zoom = ctx.map.getZoom();
-					const newZoom = zoom + (e.y - ctx.y) * ctx.zoomSpeed;
-					ctx.map?.moveCamera({
-						zoom: newZoom,
-					});
+					if (Math.abs(e.y - ctx.secondTouch.y) > 20) {
+						const zoom = ctx.map.getZoom();
+						const newZoom = zoom + (e.y - ctx.y) * ctx.zoomSpeed;
+						ctx.map?.moveCamera({
+							zoom: newZoom,
+						});
+					}
 
 					ctx.x = e.x;
 					ctx.y = e.y;
 				},
 				setAnchor: (ctx, e) => {
-					ctx.yAnchor = e.y;
+					ctx.secondTouch.x = e.x;
+					ctx.secondTouch.y = e.y;
 				},
 				disablePan: (ctx, e) => {
 					ctx.map?.setOptions({
-						gestureHandling: 'none'
+						gestureHandling: 'greedy'
 					});
 				},
 				enablePan: (ctx, e) => {
