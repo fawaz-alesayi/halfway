@@ -38,7 +38,7 @@ export const doubleClickZooming =
 			initial: 'inactive',
 			context: {
 				map: undefined,
-				zoomSpeed: 0.005,
+				zoomSpeed: 0.010,
 				zoom: undefined,
 				x: undefined,
 				y: undefined,

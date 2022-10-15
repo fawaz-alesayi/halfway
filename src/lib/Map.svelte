@@ -1,10 +1,13 @@
 <script lang="ts">
+	import UIOverlay from './UIOverlay.svelte';
+
 	import { Loader } from '@googlemaps/js-api-loader';
 	import { PUBLIC_GMAPS_KEY, PUBLIC_MAP_ID } from '$env/static/public';
 	import { doubleClickZooming } from './zoomMachine';
 	import { useMachine } from '@xstate/svelte';
 	import { onMount } from 'svelte';
 	import { pan } from 'svelte-gestures';
+	import AutoComplete from './AutoComplete.svelte';
 	let map: google.maps.Map;
 
 	const { send, state } = useMachine(doubleClickZooming);
@@ -33,6 +36,7 @@
 	onMount(() => {
 		const loader = new Loader({
 			apiKey: PUBLIC_GMAPS_KEY as string,
+			libraries: ['places'],
 			version: 'quarterly'
 		});
 
@@ -43,7 +47,9 @@
 				gestureHandling: 'greedy',
 				zoomControl: false,
 				streetViewControl: false,
-				mapId: PUBLIC_MAP_ID
+				mapId: PUBLIC_MAP_ID,
+				fullscreenControl: false,
+				mapTypeControl: false
 			});
 
 			map.setOptions({
@@ -83,25 +89,17 @@
 </script>
 
 {#if map}
-	<div class="fixed z-10 top-16 text-4xl left-4 rounded-md ">
-		<!-- <button
-			type="button"
-			class="mx-auto inline-flex items-center rounded-full border border-transparent bg-indigo-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-			>Confirm First Location</button
-		> -->
-		<p class="bg-indigo-600 text-2xl text-white mb-4 p-1">
-			{$state.value}
-		</p>
-		<p class="bg-indigo-600 text-2xl text-white mb-2 p-1">
-			{`y-anchor: ${$state.context['anchor'].y}`}
-		</p>
-		<p class="bg-indigo-600 text-2xl text-white p-1">
-			{`displacement: ${$state.context['anchor'].y - $state.context['y']}`}
-		</p>
-		<p class="bg-indigo-600 text-2xl text-white p-1">
-			{`zoom: ${$state.context['map']?.getZoom()}`}
-		</p>
-	</div>
+	<UIOverlay
+		onPlaceChanged={(place) => {
+			// Smoothly pan to the new location
+			console.log(place);
+			if (place.geometry?.location) {
+				map.panTo(place.geometry.location);
+			} else {
+				console.log('no location');
+			}
+		}}
+	/>
 {/if}
 <div
 	class="full-screen"

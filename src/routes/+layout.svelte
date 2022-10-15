@@ -4,7 +4,7 @@
 
 <svelte:head>
 	<title>Halfway</title>
-	<meta name="description" content="Meet your friends halfway" />
+	<meta name="description" content="Find the perfect place to meet people" />
 </svelte:head>
 
 <slot />
