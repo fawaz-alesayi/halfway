@@ -1,7 +1,7 @@
 <script lang="ts">
 	import AutoComplete from './AutoComplete.svelte';
+	import { mapService } from './zoomMachine';
 	let location = '';
-
 	export let onPlaceChanged: (place: google.maps.places.PlaceResult) => void;
 </script>
 
@@ -32,20 +32,22 @@
 				value={location}
 				class="block w-full rounded-md border-gray-300 pl-10 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
 			/>
+			<div class="mt-4 bg-indigo-700 text-white">
+				State: {$mapService.value}
+			</div>
 		</div>
 	</form>
 </div>
 
-
 <style global>
-    .pac-container {
-        background-color: white;
-    }
+	.pac-container {
+		background-color: white;
+	}
 
-    .pac-container:after {
-    /* Disclaimer: not needed to show 'powered by Google' if also a Google Map is shown */
+	.pac-container:after {
+		/* Disclaimer: not needed to show 'powered by Google' if also a Google Map is shown */
 
-    background-image: none;
-    height: 0px;
-}
+		background-image: none;
+		height: 0px;
+	}
 </style>

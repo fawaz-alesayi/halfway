@@ -3,14 +3,10 @@
 
 	import { Loader } from '@googlemaps/js-api-loader';
 	import { PUBLIC_GMAPS_KEY, PUBLIC_MAP_ID } from '$env/static/public';
-	import { doubleClickZooming } from './zoomMachine';
-	import { useMachine } from '@xstate/svelte';
+	import { mapService } from './zoomMachine';
 	import { onMount } from 'svelte';
 	import { pan } from 'svelte-gestures';
-	import AutoComplete from './AutoComplete.svelte';
 	let map: google.maps.Map;
-
-	const { send, state } = useMachine(doubleClickZooming);
 
 	// User location
 	let marker1: google.maps.Marker;
@@ -56,18 +52,24 @@
 				isFractionalZoomEnabled: true
 			});
 
-			send({
+			mapService.send({
 				type: 'mapLoaded',
 				map: map
 			});
 
-			// add an OnClick event to the map that adds a marker on the clicked location
-			// map.addListener('dblclick', (event: any) => {
+			// // add an OnClick event to the map that adds a marker on the clicked location
+			// map.addListener('click', (event: google.maps.MapMouseEvent) => {
 			// 	console.log(event);
 			// 	console.log('clicked on map');
 			// 	placeMarker(marker1, event.latLng);
 			// 	// map.setCenter(event.latLng);
 			// });
+
+			map.addListener('drag', (event: google.maps.MapMouseEvent) => {
+				mapService.send({
+					type: 'drag'
+				});
+			});
 		});
 
 		// ask for current user location
@@ -104,23 +106,29 @@
 <div
 	class="full-screen"
 	on:touchstart={(e) => {
-		send({
+		mapService.send({
 			type: 'touchstart',
 			y: e.touches[0].clientY,
 			x: e.touches[0].clientX
 		});
 	}}
+		on:touchmove={(e) => {
+			mapService.send({
+				type: 'touchmove',
+				y: e.touches[0].clientY,
+				x: e.touches[0].clientX
+			});
+		}}
 	on:touchend={() => {
-		send('touchend');
+		mapService.send('touchend');
 	}}
 	use:pan={{ delay: 0 }}
 	on:pan={(e) => {
-		send({
+		mapService.send({
 			type: 'pan',
 			x: e.detail.x,
 			y: e.detail.y
 		});
-		// zoom in on the map by changing the bounds
 	}}
 	bind:this={container}
 />

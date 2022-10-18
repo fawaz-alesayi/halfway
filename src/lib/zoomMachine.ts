@@ -1,7 +1,7 @@
-import { assign, createMachine } from 'xstate';
+import { assign, createMachine, interpret } from 'xstate';
 
-// State Machine that describes the "double click then pan to zoom behavior"
-export const doubleClickZooming =
+// State Machine that handles all UI interactions for the map
+const mapMachine =
 	/** @xstate-layout N4IgpgJg5mDOIC5QQEYBsD6AvA9jgtgHQCWAdgIYDGALsQG5gDE1OArpQBazXkBO1iUAAccsYrRylBIAB6IAjAFYADIQAcigCzyAbAGYduvXoDsBgDQgAnogCciwppPy9agExKdb+5rcBfP0tUTFwCQhZ2DjIoZjZObj4BJBARMQkpZLkEPXtCb009XTVbNxMdW1tLGwRcpxd3T28tf0CQYOw8InaIzmjGABEAJQBBAHFpVPFiSWksnR0TPOU1TWV5NXkPLU0quwc61y2vHxbW0hwIOGl20KIyKloGCdEpmczEX12EYsJbHTUTICTG5lppbGYAkF0B0wj0oqQoM80tMMqAsqU1IQ9Fp5LZNDpNO5FGoVl8fn8AWC1DplOUSopIW1obdCN04vDEclJulZohFG43IQTHi9E4SvjbPIdtZEOT-iYqTS6W4dIybp1CLdokjXqjZIgyposeUVsZAUr5GTbL95UCQStwZo1czOjqee8EOsvusAgEgA */
 	createMachine(
 		{
@@ -22,6 +22,8 @@ export const doubleClickZooming =
 				},
 				events: {} as
 					| { type: 'touchstart', x: number, y: number }
+					| { type: 'touchmove', x: number, y: number }
+					| { type: 'placeMarkerAndPan' }
 					| { type: 'pan'; x: number; y: number }
 					| { type: 'touchend' }
 					| { type: 'mapLoaded'; map: google.maps.Map }
@@ -32,6 +34,7 @@ export const doubleClickZooming =
 					| { type: 'setAnchor'; x: number, y: number }
 					| { type: 'clearAnchor'; }
 					| { type: 'clearXY'; }
+					| { type: 'drag'; }
 			},
 			predictableActionArguments: true,
 			id: 'dbl_zoom',
@@ -74,13 +77,33 @@ export const doubleClickZooming =
 				},
 				touching: {
 					on: {
+						drag: {
+							target: 'moving',
+						},
+						// touchmove: {
+						// 	target: 'moving',
+						// 	cond: (context, event) => Math.abs(event.x - context.firstTouch.x) > 10 && Math.abs(event.y - context.firstTouch.y) > 10,
+						// },
 						touchstart: {
 							target: 'dbl_touching'
 						},
 						touchend: {
 							target: 'dbl_touch_waiting'
+						},
+					},
+					after: {
+						1000: {
+							target: 'active',
+							actions: ['placeMarkerAndPan']
+						},
+					},
+				},
+				moving: {
+					on: {
+						touchend: {
+							target: 'active',
 						}
-					}
+					},
 				},
 				dbl_touch_waiting: {
 					on: {
@@ -133,6 +156,16 @@ export const doubleClickZooming =
 				setFirstTouch: (ctx, e) => {
 					ctx.firstTouch.y = e.y;
 					ctx.firstTouch.x = e.x;
+				},
+				placeMarkerAndPan: (ctx, e) => {
+					const { map, firstTouch } = ctx;
+					const { x, y } = firstTouch;
+					const latLng = map.getProjection().fromPointToLatLng(new google.maps.Point(x, y));
+					const marker = new google.maps.Marker({
+						position: latLng,
+						map,
+					});
+					marker.setPosition(latLng);
 				},
 				changeBounds: (ctx, e) => {
 					if (ctx.x === undefined || ctx.y === undefined) {
@@ -192,3 +225,7 @@ export const doubleClickZooming =
 			}
 		}
 	);
+
+export const mapService = interpret(mapMachine).start();
+
+
