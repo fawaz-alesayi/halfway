@@ -97,7 +97,7 @@
 
 <input
 	bind:this={inputField}
-	class={$$props.class}
+	class={$$props.class + " pointer-events-auto"}
 	on:change={onChange}
 	on:keydown={onKeyDown}
 	{placeholder}

@@ -1,11 +1,11 @@
 <script lang="ts">
 	import AutoComplete from './AutoComplete.svelte';
-	import { mapService } from './zoomMachine';
+	import { mapService } from './mapMachine';
 	let location = '';
 	export let onPlaceChanged: (place: google.maps.places.PlaceResult) => void;
 </script>
 
-<div class="z-10 absolute flex justify-center">
+<div class="z-10 absolute flex justify-center pointer-events-none">
 	<form class="flex items-center justify-center">
 		<label for="simple-search" class="sr-only">Search</label>
 		<div class="relative w-full">
@@ -32,11 +32,19 @@
 				value={location}
 				class="block w-full rounded-md border-gray-300 pl-10 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
 			/>
-			<div class="mt-4 bg-indigo-700 text-white">
-				State: {$mapService.value}
-			</div>
+		</div>
+		<div class="mt-4 bg-indigo-700 text-white">
+			State: {$mapService.value}
 		</div>
 	</form>
+
+	<!-- Button at the bottom -->
+	<button
+		type="button"
+		class=" self-end px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+	>
+		Choose the other person&apos;s location
+	</button>
 </div>
 
 <style global>

@@ -1,38 +1,34 @@
 import { assign, createMachine, interpret } from 'xstate';
 
 // State Machine that handles all UI interactions for the map
-const mapMachine =
+export const mapMachine =
 	/** @xstate-layout N4IgpgJg5mDOIC5QQEYBsD6AvA9jgtgHQCWAdgIYDGALsQG5gDE1OArpQBazXkBO1iUAAccsYrRylBIAB6IAjAFYADIQAcigCzyAbAGYduvXoDsBgDQgAnogCciwppPy9agExKdb+5rcBfP0tUTFwCQhZ2DjIoZjZObj4BJBARMQkpZLkEPXtCb009XTVbNxMdW1tLGwRcpxd3T28tf0CQYOw8InaIzmjGABEAJQBBAHFpVPFiSWksnR0TPOU1TWV5NXkPLU0quwc61y2vHxbW0hwIOGl20KIyKloGCdEpmczEX12EYsJbHTUTICTG5lppbGYAkF0B0wj0oqQoM80tMMqAsqU1IQ9Fp5LZNDpNO5FGoVl8fn8AWC1DplOUSopIW1obdCN04vDEclJulZohFG43IQTHi9E4SvjbPIdtZEOT-iYqTS6W4dIybp1CLdokjXqjZIgyposeUVsZAUr5GTbL95UCQStwZo1czOjqee8EOsvusAgEgA */
 	createMachine(
 		{
-			tsTypes: {} as import('./zoomMachine.typegen').Typegen0,
+			tsTypes: {} as import("./mapMachine.typegen").Typegen0,
 			schema: {
 				context: {} as {
-					map?: google.maps.Map; zoomSpeed: number; zoom?: number; x?: number; y?: number, secondTouch: {
+					map: google.maps.Map; zoomSpeed: number; zoom?: number; x?: number; y?: number, secondTouch: {
 						x: number;
 						y: number;
 					}, firstTouch: {
 						x: number;
 						y: number;
 					},
-					anchor: {
-						x?: number;
-						y?: number;
-					}
+					firstPersonMarker: google.maps.Marker;
+					secondPersonMarker: google.maps.Marker;
 				},
 				events: {} as
 					| { type: 'touchstart', x: number, y: number }
 					| { type: 'touchmove', x: number, y: number }
-					| { type: 'placeMarkerAndPan' }
+					| { type: 'placeFirstMarker' }
 					| { type: 'pan'; x: number; y: number }
 					| { type: 'touchend' }
 					| { type: 'mapLoaded'; map: google.maps.Map }
-					| { type: 'boundsChanged'; bounds: google.maps.LatLngBounds }
+					| { type: 'zoom'; x: number; y: number }
 					| { type: 'setSecondTouch'; x: number, y: number }
 					| { type: 'disablePan' }
 					| { type: 'enablePan' }
-					| { type: 'setAnchor'; x: number, y: number }
-					| { type: 'clearAnchor'; }
 					| { type: 'clearXY'; }
 					| { type: 'drag'; }
 			},
@@ -40,7 +36,7 @@ const mapMachine =
 			id: 'dbl_zoom',
 			initial: 'inactive',
 			context: {
-				map: undefined,
+				map: undefined as any,
 				zoomSpeed: 0.010,
 				zoom: undefined,
 				x: undefined,
@@ -53,10 +49,8 @@ const mapMachine =
 					x: 0,
 					y: 0,
 				},
-				anchor: {
-					x: undefined,
-					y: undefined,
-				},
+				firstPersonMarker: undefined as any,
+				secondPersonMarker: undefined as any,
 			},
 			states: {
 				inactive: {
@@ -80,10 +74,6 @@ const mapMachine =
 						drag: {
 							target: 'moving',
 						},
-						// touchmove: {
-						// 	target: 'moving',
-						// 	cond: (context, event) => Math.abs(event.x - context.firstTouch.x) > 10 && Math.abs(event.y - context.firstTouch.y) > 10,
-						// },
 						touchstart: {
 							target: 'dbl_touching'
 						},
@@ -92,9 +82,8 @@ const mapMachine =
 						},
 					},
 					after: {
-						1000: {
-							target: 'active',
-							actions: ['placeMarkerAndPan']
+						800: {
+							actions: ['placeFirstMarker']
 						},
 					},
 				},
@@ -130,7 +119,6 @@ const mapMachine =
 							target: 'active'
 						},
 					},
-					exit: ['setAnchor'],
 				},
 				zooming: {
 					entry: ['disablePan'],
@@ -138,11 +126,11 @@ const mapMachine =
 					on: {
 						pan: {
 							target: 'zooming',
-							actions: ['changeBounds']
+							actions: ['zoom']
 						},
 						touchend: {
 							target: 'active',
-							actions: ['clearAnchor', 'clearXY']
+							actions: ['clearXY'],
 						},
 					}
 				}
@@ -150,24 +138,36 @@ const mapMachine =
 		},
 		{
 			actions: {
-				setMap: (ctx, e) => {
-					ctx.map = e.map;
-				},
+				setMap: assign({
+					map: (context, event) => event.map,
+					firstPersonMarker: (context, event) => new google.maps.Marker({
+						map: event.map,
+					}),
+					secondPersonMarker: (context, event) => new google.maps.Marker({
+						map: event.map,
+					}),
+				}),
 				setFirstTouch: (ctx, e) => {
 					ctx.firstTouch.y = e.y;
 					ctx.firstTouch.x = e.x;
 				},
-				placeMarkerAndPan: (ctx, e) => {
-					const { map, firstTouch } = ctx;
-					const { x, y } = firstTouch;
-					const latLng = map.getProjection().fromPointToLatLng(new google.maps.Point(x, y));
-					const marker = new google.maps.Marker({
-						position: latLng,
-						map,
+				placeFirstMarker: (ctx, e) => {
+					placeMarker({
+						marker: ctx.firstPersonMarker,
+						x: ctx.firstTouch.x,
+						y: ctx.firstTouch.y,
+						map: ctx.map,
 					});
-					marker.setPosition(latLng);
 				},
-				changeBounds: (ctx, e) => {
+				placeSecondMarker: (ctx, e) => {
+					placeMarker({
+						marker: ctx.secondPersonMarker,
+						x: ctx.firstTouch.x,
+						y: ctx.firstTouch.y,
+						map: ctx.map,
+					});
+				},
+				zoom: (ctx, e) => {
 					if (ctx.x === undefined || ctx.y === undefined) {
 						ctx.x = e.x;
 						ctx.y = e.y;
@@ -188,22 +188,6 @@ const mapMachine =
 					ctx.secondTouch.x = e.x;
 					ctx.secondTouch.y = e.y;
 				},
-				setAnchor: assign({
-					anchor: (ctx, e) => {
-						return {
-							x: e.x,
-							y: e.y,
-						};
-					}
-				}),
-				clearAnchor: assign({
-					anchor: (ctx, e) => {
-						return {
-							x: undefined,
-							y: undefined,
-						};
-					}
-				}),
 				clearXY: assign({
 					x: (ctx, e) => {
 						return undefined;
@@ -228,4 +212,29 @@ const mapMachine =
 
 export const mapService = interpret(mapMachine).start();
 
+
+function placeMarker({
+	x,
+	y,
+	map,
+	marker,
+}: {
+	x: number;
+	y: number;
+	map: google.maps.Map;
+	marker: google.maps.Marker;
+}) {
+	const bounds = map.getBounds();
+	const ne = bounds.getNorthEast();
+	const sw = bounds.getSouthWest();
+	const width = Math.abs(ne.lng() - sw.lng());
+	const height = Math.abs(ne.lat() - sw.lat());
+	const xRatio = x / map.getDiv().clientWidth;
+	const yRatio = y / map.getDiv().clientHeight;
+	const lat = ne.lat() - (yRatio * height);
+	const lng = sw.lng() + (xRatio * width);
+	const latLng = new google.maps.LatLng(lat, lng);
+	marker.setPosition(latLng);
+	map.panTo(latLng);
+}
 
