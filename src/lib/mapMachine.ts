@@ -15,13 +15,20 @@ export const mapMachine =
 						x: number;
 						y: number;
 					},
-					firstPersonMarker: google.maps.Marker;
-					secondPersonMarker: google.maps.Marker;
+					firstPersonMarker: {
+						marker: google.maps.Marker;
+						placed: boolean;
+					}
+					secondPersonMarker: {
+						marker: google.maps.Marker;
+						placed: boolean;
+					},
+					lastMarkerPlaced: 'firstPersonMarker' | 'secondPersonMarker' | undefined;
 				},
 				events: {} as
 					| { type: 'touchstart', x: number, y: number }
 					| { type: 'touchmove', x: number, y: number }
-					| { type: 'placeFirstMarker' }
+					| { type: 'placeMarker' }
 					| { type: 'pan'; x: number; y: number }
 					| { type: 'touchend' }
 					| { type: 'mapLoaded'; map: google.maps.Map }
@@ -51,6 +58,7 @@ export const mapMachine =
 				},
 				firstPersonMarker: undefined as any,
 				secondPersonMarker: undefined as any,
+				lastMarkerPlaced: undefined,
 			},
 			states: {
 				inactive: {
@@ -83,7 +91,7 @@ export const mapMachine =
 					},
 					after: {
 						800: {
-							actions: ['placeFirstMarker']
+							actions: ['placeMarker']
 						},
 					},
 				},
@@ -140,32 +148,55 @@ export const mapMachine =
 			actions: {
 				setMap: assign({
 					map: (context, event) => event.map,
-					firstPersonMarker: (context, event) => new google.maps.Marker({
-						map: event.map,
-					}),
-					secondPersonMarker: (context, event) => new google.maps.Marker({
-						map: event.map,
-					}),
+					firstPersonMarker: (context, event) => {
+						return {
+							marker: new google.maps.Marker({
+								map: event.map,
+							}),
+							placed: false,
+						}
+					},
+					secondPersonMarker: (context, event) => {
+						return {
+							marker: new google.maps.Marker({
+								map: event.map,
+							}),
+							placed: false,
+						}
+					},
 				}),
 				setFirstTouch: (ctx, e) => {
 					ctx.firstTouch.y = e.y;
 					ctx.firstTouch.x = e.x;
 				},
-				placeFirstMarker: (ctx, e) => {
-					placeMarker({
-						marker: ctx.firstPersonMarker,
-						x: ctx.firstTouch.x,
-						y: ctx.firstTouch.y,
-						map: ctx.map,
-					});
-				},
-				placeSecondMarker: (ctx, e) => {
-					placeMarker({
-						marker: ctx.secondPersonMarker,
-						x: ctx.firstTouch.x,
-						y: ctx.firstTouch.y,
-						map: ctx.map,
-					});
+				placeMarker: (ctx, e) => {
+					if (ctx.lastMarkerPlaced === undefined) {
+						placeMarker({
+							marker: ctx.firstPersonMarker.marker,
+							x: ctx.firstTouch.x,
+							y: ctx.firstTouch.y,
+							map: ctx.map,
+						})
+						ctx.firstPersonMarker.placed = true;
+						ctx.lastMarkerPlaced = 'firstPersonMarker';
+					} else if (ctx.lastMarkerPlaced === 'firstPersonMarker') {
+						placeMarker({
+							marker: ctx.secondPersonMarker.marker,
+							x: ctx.firstTouch.x,
+							y: ctx.firstTouch.y,
+							map: ctx.map,
+						})
+						ctx.secondPersonMarker.placed = true;
+						ctx.lastMarkerPlaced = 'secondPersonMarker';
+					} else {
+						placeMarker({
+							marker: ctx.firstPersonMarker.marker,
+							x: ctx.firstTouch.x,
+							y: ctx.firstTouch.y,
+							map: ctx.map,
+						})
+						ctx.lastMarkerPlaced = 'firstPersonMarker';
+					}
 				},
 				zoom: (ctx, e) => {
 					if (ctx.x === undefined || ctx.y === undefined) {

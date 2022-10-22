@@ -3,6 +3,28 @@
 	import { mapService } from './mapMachine';
 	let location = '';
 	export let onPlaceChanged: (place: google.maps.places.PlaceResult) => void;
+
+	export let directionsService: google.maps.DirectionsService;
+
+	const calculateDirections = async (marker1: google.maps.Marker, marker2: google.maps.Marker) => {
+		const request: google.maps.DirectionsRequest = {
+			origin: marker1.getPosition() as google.maps.LatLng,
+			destination: marker2.getPosition() as google.maps.LatLng,
+			travelMode: google.maps.TravelMode.DRIVING
+		};
+
+		const result = await directionsService.route(request);
+
+		console.log(result);
+
+		const directionsRenderer = new google.maps.DirectionsRenderer();
+		const map = $mapService.context.map;
+		directionsRenderer.setMap(map);
+		directionsRenderer.setDirections(result);
+	};
+
+	$: buttonEnabled =
+		$mapService.context.firstPersonMarker.placed && $mapService.context.secondPersonMarker.placed;
 </script>
 
 <div class="z-10 absolute flex justify-center pointer-events-none">
@@ -38,12 +60,22 @@
 		</div>
 	</form>
 
-	<!-- Button at the bottom -->
 	<button
 		type="button"
-		class=" self-end px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+		disabled={!buttonEnabled}
+		on:click={() => {
+			calculateDirections(
+				$mapService.context.firstPersonMarker.marker,
+				$mapService.context.secondPersonMarker.marker
+			);
+		}}
+		class="self-end px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
 	>
-		Choose the other person&apos;s location
+		{#if buttonEnabled}
+			Find the midpoint
+		{:else}
+			Place both markers
+		{/if}
 	</button>
 </div>
 
@@ -57,5 +89,9 @@
 
 		background-image: none;
 		height: 0px;
+	}
+
+	button, input, select, textarea, a {
+		pointer-events: auto;
 	}
 </style>

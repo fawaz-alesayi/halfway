@@ -12,6 +12,8 @@
 	let zoom = 11;
 	let center = { lat: -34.397, lng: 150.644 };
 
+	let directionsService: google.maps.DirectionsService;
+
 	onMount(() => {
 		const loader = new Loader({
 			apiKey: PUBLIC_GMAPS_KEY as string,
@@ -30,6 +32,8 @@
 				fullscreenControl: false,
 				mapTypeControl: false
 			});
+
+			directionsService = new google.maps.DirectionsService();
 
 			map.setOptions({
 				isFractionalZoomEnabled: true
@@ -73,8 +77,9 @@
 	});
 </script>
 
-{#if map}
+{#if map && directionsService}
 	<UIOverlay
+		{directionsService}
 		onPlaceChanged={(place) => {
 			// Smoothly pan to the new location
 			console.log(place);
