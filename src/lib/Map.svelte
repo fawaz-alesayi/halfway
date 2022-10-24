@@ -6,11 +6,13 @@
 	import { onMount } from 'svelte';
 	import { pan } from 'svelte-gestures';
 	import { mapService } from './mapMachine';
+	
+	export let countryCode: any;
+
 	let map: google.maps.Map;
 
 	let container: HTMLElement;
-	let zoom = 11;
-	let center = { lat: -34.397, lng: 150.644 };
+	let zoom = 6
 
 	let directionsService: google.maps.DirectionsService;
 
@@ -23,7 +25,6 @@
 
 		loader.load().then(() => {
 			map = new google.maps.Map(container, {
-				center,
 				zoom,
 				gestureHandling: 'greedy',
 				zoomControl: false,
@@ -31,6 +32,16 @@
 				mapId: PUBLIC_MAP_ID,
 				fullscreenControl: false,
 				mapTypeControl: false
+			});
+			const geocoder = new google.maps.Geocoder();
+			const regionNames = new Intl.DisplayNames(['en'], {type: 'region'});
+			const country = regionNames.of(countryCode);
+			geocoder.geocode({ address: country }, (results, status) => {
+				if (status === 'OK') {
+					map.setCenter(results[0].geometry.location);
+				} else {
+					alert('Geocode was not successful for the following reason: ' + status);
+				}
 			});
 
 			directionsService = new google.maps.DirectionsService();
@@ -68,6 +79,7 @@
 						lng: position.coords.longitude
 					};
 					map.setCenter(pos);
+					map.setZoom(12);
 				},
 				() => {}
 			);
