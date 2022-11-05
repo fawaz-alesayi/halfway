@@ -6,7 +6,27 @@
 
 	export let directionsService: google.maps.DirectionsService;
 
+	const directionsRenderer = new google.maps.DirectionsRenderer();
+
+	const map = $mapService.context.map;
+	
+	const midpointMarker = new google.maps.Marker({
+		icon: {
+			path: google.maps.SymbolPath.CIRCLE,
+			scale: 10,
+			fillColor: 'green',
+			fillOpacity: 1,
+			strokeWeight: 0
+		}
+	});
+
+
+	const clearDirections = () => {
+		directionsRenderer.setMap(null);
+	};
+
 	const calculateDirections = async (marker1: google.maps.Marker, marker2: google.maps.Marker) => {
+		clearDirections();
 		const request: google.maps.DirectionsRequest = {
 			origin: marker1.getPosition() as google.maps.LatLng,
 			destination: marker2.getPosition() as google.maps.LatLng,
@@ -17,8 +37,12 @@
 
 		console.log(result);
 
-		const directionsRenderer = new google.maps.DirectionsRenderer();
-		const map = $mapService.context.map;
+		// display the middle point
+		const midpoint =
+			result.routes[0].overview_path[Math.floor(result.routes[0].overview_path.length / 2)];
+		midpointMarker.setPosition(midpoint);
+		midpointMarker.setMap(map);
+
 		directionsRenderer.setMap(map);
 		directionsRenderer.setDirections(result);
 	};
@@ -91,7 +115,11 @@
 		height: 0px;
 	}
 
-	button, input, select, textarea, a {
+	button,
+	input,
+	select,
+	textarea,
+	a {
 		pointer-events: auto;
 	}
 </style>

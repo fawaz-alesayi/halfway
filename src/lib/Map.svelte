@@ -6,13 +6,13 @@
 	import { onMount } from 'svelte';
 	import { pan } from 'svelte-gestures';
 	import { mapService } from './mapMachine';
-	
-	export let countryCode: any;
+
+	export let countryCode: string | null;
 
 	let map: google.maps.Map;
 
 	let container: HTMLElement;
-	let zoom = 6
+	const initialZoom = 6;
 
 	let directionsService: google.maps.DirectionsService;
 
@@ -25,7 +25,7 @@
 
 		loader.load().then(() => {
 			map = new google.maps.Map(container, {
-				zoom,
+				zoom: initialZoom,
 				gestureHandling: 'greedy',
 				zoomControl: false,
 				streetViewControl: false,
@@ -34,15 +34,19 @@
 				mapTypeControl: false
 			});
 			const geocoder = new google.maps.Geocoder();
-			const regionNames = new Intl.DisplayNames(['en'], {type: 'region'});
+			const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
+			if (countryCode) {
 			const country = regionNames.of(countryCode);
-			geocoder.geocode({ address: country }, (results, status) => {
-				if (status === 'OK') {
-					map.setCenter(results[0].geometry.location);
-				} else {
-					alert('Geocode was not successful for the following reason: ' + status);
-				}
-			});
+				geocoder.geocode({ address: country }, (results, status) => {
+					if (status === 'OK') {
+						if (results && results[0]) {
+							map.setCenter(results[0].geometry.location);
+						}
+					} else {
+						alert('Geocode was not successful for the following reason: ' + status);
+					}
+				});
+			}
 
 			directionsService = new google.maps.DirectionsService();
 
@@ -69,6 +73,8 @@
 				});
 			});
 		});
+
+		console.log('directionsService', directionsService);
 
 		// ask for current user location
 		if (navigator.geolocation) {

@@ -1,8 +1,7 @@
 <script lang="ts">
 	import Map from '$lib/Map.svelte';
 
-	  /** @type {import('./$types').PageData} */
-	export let data;
+	export let data: import ('./$types').PageData;
 </script>
 
 <Map countryCode={data.country}/>
