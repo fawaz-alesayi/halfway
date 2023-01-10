@@ -1,10 +1,11 @@
 <script lang="ts">
 	import Map from '$lib/Map.svelte';
+	import type { PageData } from './$types';
 
-	export let data: import ('./$types').PageData;
+	export let data: PageData;
 </script>
 
-<Map countryCode={data.country}/>
+<Map countryCode={data.country} />
 
 <style>
 	:global(body) {

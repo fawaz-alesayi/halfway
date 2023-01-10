@@ -107,7 +107,7 @@ export const mapMachine =
 						touchstart: {
 							target: 'dbl_touching',
 							actions: ['setSecondTouch'],
-							// touch target area is a 10 unit square
+							// touch target area is a 20 unit square
 							cond: (context, event) => Math.abs(context.firstTouch.y - event.y) <= 20 && Math.abs(context.firstTouch.x - event.x) <= 20
 						},
 					},

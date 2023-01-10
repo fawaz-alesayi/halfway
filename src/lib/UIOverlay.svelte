@@ -4,12 +4,8 @@
 	let location = '';
 	export let onPlaceChanged: (place: google.maps.places.PlaceResult) => void;
 
-	export let directionsService: google.maps.DirectionsService;
-
-	const directionsRenderer = new google.maps.DirectionsRenderer();
-
 	const map = $mapService.context.map;
-	
+
 	const midpointMarker = new google.maps.Marker({
 		icon: {
 			path: google.maps.SymbolPath.CIRCLE,
@@ -20,31 +16,63 @@
 		}
 	});
 
+	let markers: google.maps.Marker[] = [];
 
-	const clearDirections = () => {
-		directionsRenderer.setMap(null);
+	// Recommends a list of resturants and coffeshops between marker1 and marker2 and orders them by shortest to reach
+	// from marker1 and marker2
+	const recommendHalfways = async (marker1: google.maps.Marker, marker2: google.maps.Marker) => {
+		// Get middle point
+		const catesianMidpoint = await midpoint(marker1, marker2);
+
+		const placesService = new google.maps.places.PlacesService(map);
+
+		// Get places near midpoint
+		const placesNearMidpoint = await new Promise<google.maps.places.PlaceResult[]>((resolve) => {
+			placesService.nearbySearch(
+				{
+					location: catesianMidpoint,
+					radius: 5000,
+					type: 'cafe',
+					keyword: 'coffee'
+				},
+				(results, status) => {
+					if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+						resolve(results);
+					} else {
+						resolve([]);
+					}
+				}
+			);
+		});
+
+		// log places near midpoint and plot them on the map
+		console.log(placesNearMidpoint);
+		placesNearMidpoint.forEach((place) => {
+			if (place.geometry && place.geometry.location) {
+				markers.push(
+					new google.maps.Marker({
+						position: place.geometry.location,
+						map: map
+					})
+				);
+			}
+		});
 	};
 
-	const calculateDirections = async (marker1: google.maps.Marker, marker2: google.maps.Marker) => {
-		clearDirections();
-		const request: google.maps.DirectionsRequest = {
-			origin: marker1.getPosition() as google.maps.LatLng,
-			destination: marker2.getPosition() as google.maps.LatLng,
-			travelMode: google.maps.TravelMode.DRIVING
-		};
+	const midpoint = async (m1: google.maps.Marker, m2: google.maps.Marker) => {
+		const p1 = m1.getPosition();
+		const p2 = m2.getPosition();
+		if (p1 && p2) {
+			const lat1 = p1.lat();
+			const lng1 = p1.lng();
+			const lat2 = p2.lat();
+			const lng2 = p2.lng();
 
-		const result = await directionsService.route(request);
+			const lat = (lat1 + lat2) / 2;
+			const lng = (lng1 + lng2) / 2;
 
-		console.log(result);
-
-		// display the middle point
-		const midpoint =
-			result.routes[0].overview_path[Math.floor(result.routes[0].overview_path.length / 2)];
-		midpointMarker.setPosition(midpoint);
-		midpointMarker.setMap(map);
-
-		directionsRenderer.setMap(map);
-		directionsRenderer.setDirections(result);
+			return new google.maps.LatLng(lat, lng);
+		}
 	};
 
 	$: buttonEnabled =
@@ -88,7 +116,7 @@
 		type="button"
 		disabled={!buttonEnabled}
 		on:click={() => {
-			calculateDirections(
+			recommendHalfways(
 				$mapService.context.firstPersonMarker.marker,
 				$mapService.context.secondPersonMarker.marker
 			);
@@ -100,6 +128,17 @@
 		{:else}
 			Place both markers
 		{/if}
+	</button>
+
+	<button
+		on:click={() => {
+			markers.forEach((marker) => {
+				marker.setMap(null);
+			});
+			markers = [];
+		}}
+	>
+		Clear markers
 	</button>
 </div>
 

@@ -14,8 +14,6 @@
 	let container: HTMLElement;
 	const initialZoom = 6;
 
-	let directionsService: google.maps.DirectionsService;
-
 	onMount(() => {
 		const loader = new Loader({
 			apiKey: PUBLIC_GMAPS_KEY as string,
@@ -36,7 +34,7 @@
 			const geocoder = new google.maps.Geocoder();
 			const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
 			if (countryCode) {
-			const country = regionNames.of(countryCode);
+				const country = regionNames.of(countryCode);
 				geocoder.geocode({ address: country }, (results, status) => {
 					if (status === 'OK') {
 						if (results && results[0]) {
@@ -48,7 +46,6 @@
 				});
 			}
 
-			directionsService = new google.maps.DirectionsService();
 
 			map.setOptions({
 				isFractionalZoomEnabled: true
@@ -67,14 +64,12 @@
 			// 	// map.setCenter(event.latLng);
 			// });
 
-			map.addListener('drag', (event: google.maps.MapMouseEvent) => {
+			map.addListener('drag', (_: google.maps.MapMouseEvent) => {
 				mapService.send({
 					type: 'drag'
 				});
 			});
 		});
-
-		console.log('directionsService', directionsService);
 
 		// ask for current user location
 		if (navigator.geolocation) {
@@ -95,9 +90,8 @@
 	});
 </script>
 
-{#if map && directionsService}
+{#if map}
 	<UIOverlay
-		{directionsService}
 		onPlaceChanged={(place) => {
 			// Smoothly pan to the new location
 			console.log(place);
